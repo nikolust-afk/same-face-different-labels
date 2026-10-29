@@ -38,6 +38,6 @@ The BMI category comes from the WHO cut-offs applied to the model's number: unde
 - [FairFace](https://github.com/joojs/fair-face-recognition) by Kärkkäinen and Joo.
 - [InsightFace](https://github.com/deepinsight/insightface) genderage. Its models are licensed for non-commercial research only.
 - [Face-Says-Bmi](https://github.com/thebitanpaul/Face-Says-Bmi), converted to ONNX.
-- IBM Plex Mono typeface, under the SIL Open Font License.
+- IBM Plex Mono typeface (loaded from Google Fonts), under the SIL Open Font License.
 
 `sample.jpg` shows a generated face of a person who does not exist. It is used only to warm up the models.
