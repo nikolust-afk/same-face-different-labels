@@ -145,7 +145,7 @@ function grabSquare() {   // centre square of the camera, mirrored like the prev
 /* ---------- countdown, photo, reading ---------- */
 async function takePhoto() {
   if (!ready || busy || !camOK) return;
-  if (mode === "photo") {   // back to the live camera for the next subject
+  if (mode === "photo") {   // back to the live camera for another picture
     clearGrid(); shot.hidden = true; video.hidden = false; mode = "live";
     go.textContent = "Take photo"; say("Look at the camera"); return;
   }
@@ -158,14 +158,13 @@ async function takePhoto() {
   video.hidden = true; shot.hidden = false; mode = "photo";
   const fl = $("flash"); fl.classList.remove("go"); void fl.offsetWidth; fl.classList.add("go");
   say("Reading");
-  const t0 = performance.now();
   try {
     const r = await LabelsEngine.analyze(c);
     window.__last = r;
-    say(`Read in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+    say("");
     await render(r);
   } catch (e) { console.error(e); say("Reading failed: " + e.message); }
-  go.textContent = "Next subject"; go.disabled = false; busy = false;
+  go.textContent = "Take another picture"; go.disabled = false; busy = false;
 }
 go.addEventListener("click", takePhoto);
 document.addEventListener("keydown", (e) => { if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); takePhoto(); } });
