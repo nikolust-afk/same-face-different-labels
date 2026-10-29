@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Same Face, Different Labels</title>
+<style>
+/* Same look as the training video: white ground, black IBM Plex Mono, 1.5 px grey outlines, neon-green cursor. */
+@font-face { font-family: "Plex Mono"; font-weight: 400; src: url("fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Plex Mono"; font-weight: 500; src: url("fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Plex Mono"; font-weight: 600; src: url("fonts/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); }
+:root { --bg: #ffffff; --ink: #111111; --grey: #8a8a8a; --line: #8a8a8a; --neon: #1ee34a; --mono: "Plex Mono", "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; color-scheme: light; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: var(--mono); }
+body { overflow: hidden; }
+[hidden] { display: none !important; }
+.app { height: 100%; display: grid; grid-template-columns: minmax(0, 29fr) minmax(0, 71fr); gap: clamp(16px, 2.6vw, 52px);
+  padding: clamp(16px, 2.6vw, 52px) max(clamp(16px, 2.6vw, 52px), env(safe-area-inset-right, 0px)) clamp(16px, 2.6vw, 52px) max(clamp(16px, 2.6vw, 52px), env(safe-area-inset-left, 0px)); }
+
+/* left: camera / photo */
+.subject { display: flex; flex-direction: column; justify-content: center; gap: 16px; min-width: 0; }
+.frame { position: relative; width: 100%; aspect-ratio: 1 / 1; border: 1.5px solid var(--line); overflow: hidden; background: var(--bg); }
+.frame video, .frame canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.frame video { transform: scaleX(-1); }
+.count { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: clamp(80px, 12vw, 240px); font-weight: 500; color: var(--ink); background: rgba(255, 255, 255, 0.35); }
+.count::after { content: ""; display: inline-block; width: 0.32em; height: 0.72em; margin-left: 0.08em; background: var(--neon); }
+.flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.flash.go { animation: flash 0.45s ease-out; }
+@keyframes flash { from { opacity: 1; } to { opacity: 0; } }
+.status { font-size: clamp(12px, 0.95vw, 18px); min-height: 1.4em; text-transform: uppercase; letter-spacing: 0.03em; }
+.status::after { content: ""; display: inline-block; width: 0.55em; height: 1em; margin-left: 0.15em; background: var(--neon); vertical-align: -0.15em; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.btn { font: inherit; font-size: clamp(13px, 1vw, 19px); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); background: var(--bg);
+  border: 1.5px solid var(--ink); padding: 0.8em 1.2em; cursor: pointer; align-self: flex-start; }
+.btn:hover:not([disabled]) { background: var(--neon); }
+.btn:focus-visible { outline: 3px solid var(--neon); outline-offset: 2px; }
+.btn[disabled] { opacity: 0.35; cursor: default; }
+
+/* right: 3 x 2 grid of categories */
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto auto; column-gap: clamp(14px, 1.8vw, 36px); row-gap: clamp(14px, 2.4vh, 40px); min-height: 0; align-content: center; }
+.cell { border-top: 1.5px solid var(--line); padding-top: clamp(10px, 1vw, 18px); min-width: 0; min-height: 0; overflow: hidden; }
+.cell h2 { margin: 0 0 clamp(10px, 1.2vw, 22px); font-size: clamp(14px, 1.15vw, 22px); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.rows { display: flex; flex-direction: column; gap: clamp(6px, 0.7vw, 12px); }
+.row { opacity: 0; transform: translateY(-4px); transition: opacity 0.18s, transform 0.18s; }
+.row.in { opacity: 1; transform: none; }
+.row .top { display: flex; justify-content: space-between; gap: 12px; font-size: clamp(11px, 0.85vw, 16px); line-height: 1.3; }
+.row .model { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .says { white-space: nowrap; font-weight: 600; }
+.row .says.typing::after { content: ""; display: inline-block; width: 0.55em; height: 1em; margin-left: 0.1em; background: var(--neon); vertical-align: -0.15em; }
+.row .sub { font-size: clamp(9px, 0.64vw, 12.5px); color: var(--grey); line-height: 1.35; margin-top: 2px; }
+
+@media (max-aspect-ratio: 1/1) {   /* portrait screens: photo on top, grid below */
+  body { overflow: auto; }
+  .app { height: auto; grid-template-columns: minmax(0, 1fr); }
+  .subject { width: 100%; max-width: 520px; margin: 0 auto; }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; }
+}
+@media (max-width: 560px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .row { transition: none; } .flash.go { animation: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="subject" aria-label="Subject">
+    <div class="frame">
+      <video id="video" playsinline muted></video>
+      <canvas id="shot" width="1024" height="1024" hidden></canvas>
+      <div class="count" id="count" hidden>3</div>
+      <div class="flash" id="flash"></div>
+    </div>
+    <button class="btn" id="go" type="button" disabled>Take photo</button>
+    <div class="status" id="status" role="status">Loading models</div>
+  </section>
+
+  <section class="grid" aria-label="Labels">
+    <div class="cell"><h2>Is it human?</h2><div class="rows" id="c-human"></div></div>
+    <div class="cell"><h2>Age</h2><div class="rows" id="c-age"></div></div>
+    <div class="cell"><h2>Gender</h2><div class="rows" id="c-gender"></div></div>
+    <div class="cell"><h2>Race</h2><div class="rows" id="c-race"></div></div>
+    <div class="cell"><h2>Expression</h2><div class="rows" id="c-expr"></div></div>
+    <div class="cell"><h2>BMI</h2><div class="rows" id="c-bmi"></div></div>
+  </section>
+</div>
+
+<script>
+/* Model weights: load the file as published; if a host only serves it as base64 text (.b64.txt), decode that instead. */
+(function () {
+  const realFetch = window.fetch.bind(window), RX = /\.(bin|f16|i8|onnx|part\d)(\?.*)?$/;
+  window.fetch = async function (input, init) {
+    const url = typeof input === "string" ? input : (input && input.url) || String(input);
+    if (!RX.test(url)) return realFetch(input, init);
+    let r = null;
+    try { r = await realFetch(input, init); if (r.ok) return r; } catch (e) {}
+    const t = await realFetch(url.replace(/(\?.*)?$/, (m) => ".b64.txt" + (m || "")), init);
+    if (!t.ok) return r || t;
+    const bin = atob((await t.text()).trim()), u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    return new Response(u.buffer, { status: 200, headers: { "Content-Type": "application/octet-stream" } });
+  };
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/dist/face-api.js"></script>
+<script>window.faceapi || document.write('<script src="lib/face-api.js"><\/script>');</script>
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.6/dist/human.js"></script>
+<script>window.Human || document.write('<script src="lib/human.js"><\/script>');</script>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/ort.wasm.min.js"></script>
+<script>window.ort || document.write('<script src="lib/ort.wasm.min.js"><\/script>');</script>
+<script src="engine.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const video = $("video"), shot = $("shot"), statusEl = $("status"), go = $("go");
+let ready = false, busy = false, camOK = false, mode = "live";
+
+const SRC = {
+  tiny: "Not disclosed", blaze: "Not stated", centernet: "COCO", antispoof: "Kaggle real-or-fake faces", liveness: "Not stated",
+  faceapiAG: "UTKFace, FG-NET, ChaLearn, Wiki, IMDB, CACD, MegaAge, MegaAge-Asian", ssrnet: "IMDB-WIKI", faceres: "Not stated", gear: "Not stated",
+  insight: "Not stated", fairface: "FairFace", faceapiExpr: "Not disclosed", oarriaga: "FER-2013", bmi: "Polk County Jail mugshots, VGG Face"
+};
+const FF_RACE = ["white", "black", "latino hispanic", "east asian", "southeast asian", "indian", "middle eastern"];
+const FF_AGE = ["0-2", "3-9", "10-19", "20-29", "30-39", "40-49", "50-59", "60-69", "70+"];
+const pct = (v) => (v == null || isNaN(v) ? "" : v.toFixed(2));
+const up = (s) => String(s || "").toUpperCase().replace(/_/g, " ");
+const say = (s) => { statusEl.textContent = s; };
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* ---------- camera ---------- */
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 1280 } }, audio: false });
+    video.srcObject = stream; await video.play();
+    return true;
+  } catch (e) {
+    say("Camera needed. Allow camera access and reload");
+    return false;
+  }
+}
+function grabSquare() {   // centre square of the camera, mirrored like the preview
+  const w = video.videoWidth, h = video.videoHeight, s = Math.min(w, h), k = Math.min(1, 1024 / s);
+  const c = document.createElement("canvas"); c.width = Math.round(s * k); c.height = Math.round(s * k);
+  const x = c.getContext("2d"); x.translate(c.width, 0); x.scale(-1, 1);
+  x.drawImage(video, (w - s) / 2, (h - s) / 2, s, s, 0, 0, c.width, c.height);
+  return c;
+}
+
+/* ---------- countdown, photo, reading ---------- */
+async function takePhoto() {
+  if (!ready || busy || !camOK) return;
+  if (mode === "photo") {   // back to the live camera for the next subject
+    clearGrid(); shot.hidden = true; video.hidden = false; mode = "live";
+    go.textContent = "Take photo"; say("Look at the camera"); return;
+  }
+  busy = true; go.disabled = true; clearGrid();
+  const count = $("count"); count.hidden = false;
+  for (const n of ["3", "2", "1"]) { count.textContent = n; say("Hold still"); await wait(1000); }
+  count.hidden = true;
+  const c = grabSquare();
+  shot.width = c.width; shot.height = c.height; shot.getContext("2d").drawImage(c, 0, 0);
+  video.hidden = true; shot.hidden = false; mode = "photo";
+  const fl = $("flash"); fl.classList.remove("go"); void fl.offsetWidth; fl.classList.add("go");
+  say("Reading");
+  const t0 = performance.now();
+  try {
+    const r = await LabelsEngine.analyze(c);
+    window.__last = r;
+    say(`Read in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+    await render(r);
+  } catch (e) { console.error(e); say("Reading failed: " + e.message); }
+  go.textContent = "Next subject"; go.disabled = false; busy = false;
+}
+go.addEventListener("click", takePhoto);
+document.addEventListener("keydown", (e) => { if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); takePhoto(); } });
+
+/* ---------- grid ---------- */
+const CELLS = ["c-human", "c-age", "c-gender", "c-race", "c-expr", "c-bmi"];
+function clearGrid() { CELLS.forEach((id) => $(id).replaceChildren()); }
+function rowEl(model, says, sub) {
+  const r = document.createElement("div"); r.className = "row";
+  const top = document.createElement("div"); top.className = "top";
+  const m = document.createElement("span"); m.className = "model"; m.textContent = model;
+  const s = document.createElement("span"); s.className = "says"; s.dataset.text = says || "—";
+  top.append(m, s);
+  const sb = document.createElement("div"); sb.className = "sub"; sb.textContent = sub;
+  r.append(top, sb); return r;
+}
+async function typeIn(el) {   // the row appears, then its label types in behind the green cursor
+  el.classList.add("in");
+  const s = el.querySelector(".says"), txt = s.dataset.text; s.classList.add("typing");
+  for (let i = 1; i <= txt.length; i++) { s.textContent = txt.slice(0, i); await wait(18); }
+  s.classList.remove("typing");
+}
+async function render(r) {
+  const H = r.human, A = H.A || {}, B = H.B || {}, C = H.C || {};
+  const ff = r.onnx.fairface, ga = r.onnx.genderage, fa = r.faceapi, bm = r.onnx.face2bmi;
+  const person = (H.objects || []).filter((o) => o.label === "person").sort((a, b) => b.score - a.score)[0];
+  const topObj = (H.objects || []).slice().sort((a, b) => b.score - a.score)[0];
+  const sub = (score, src) => (score !== "" && score != null ? score + "  ·  " : "") + src;
+  const yrs = (v) => (v == null ? "" : Math.round(v) + " yrs");
+  const ffAgeI = ff ? ff.age.indexOf(Math.max(...ff.age)) : -1;
+  const gr = (C.race || []).slice().sort((a, b) => b.score - a.score)[0];
+  const fr = ff ? FF_RACE.map((k, i) => [k, ff.race[i]]).sort((a, b) => b[1] - a[1])[0] : null;
+  const fe = fa && fa.expressions ? fa.expressions.slice().sort((a, b) => b[1] - a[1])[0] : null;
+  const oe = (A.emotion || []).slice().sort((a, b) => b.score - a.score)[0];
+  // BMI: the model returns a number; the category comes from the WHO cut-offs (40+ = morbidly obese)
+  const bmiCat = (v) => (v < 18.5 ? "UNDERWEIGHT" : v < 25 ? "NORMAL WEIGHT" : v < 30 ? "OVERWEIGHT" : v < 40 ? "OBESE" : "MORBIDLY OBESE");
+  const data = {
+    "c-human": [
+      ["Tiny Face Detector", fa ? "FACE" : "NO FACE", sub(fa ? pct(fa.score) : "", SRC.tiny)],
+      ["BlazeFace", H.A ? "FACE" : "NO FACE", sub(H.A ? pct(A.boxScore) : "", SRC.blaze)],
+      ["CenterNet", person ? "PERSON" : topObj ? up(topObj.label) : "NOTHING", sub(person ? pct(person.score) : topObj ? pct(topObj.score) : "", SRC.centernet)],
+      ["Anti-spoofing", A.real == null ? "" : A.real >= 0.5 ? "REAL" : "SPOOF", sub(pct(A.real), SRC.antispoof)],
+      ["Liveness", A.live == null ? "" : A.live >= 0.5 ? "LIVE" : "NOT LIVE", sub(pct(A.live), SRC.liveness)]
+    ],
+    "c-age": [
+      ["face-api", yrs(fa && fa.age), SRC.faceapiAG],
+      ["SSR-Net", yrs(B.age), SRC.ssrnet],
+      ["FaceRes", yrs(A.age), SRC.faceres],
+      ["GEAR", yrs(C.age), SRC.gear],
+      ["InsightFace", yrs(ga && ga.age), SRC.insight],
+      ["FairFace", ff ? FF_AGE[ffAgeI] + " yrs" : "", sub(ff ? pct(ff.age[ffAgeI]) : "", SRC.fairface)],
+      ["face2bmi", yrs(bm && bm.age), SRC.bmi]
+    ],
+    "c-gender": [
+      ["face-api", fa ? up(fa.gender) : "", sub(fa ? pct(fa.genderProbability) : "", SRC.faceapiAG)],
+      ["SSR-Net", up(B.gender), sub(pct(B.genderScore), SRC.ssrnet)],
+      ["FaceRes", up(A.gender), sub(pct(A.genderScore), SRC.faceres)],
+      ["GEAR", up(C.gender), sub(pct(C.genderScore), SRC.gear)],
+      ["InsightFace", ga ? (ga.male > ga.female ? "MALE" : "FEMALE") : "", SRC.insight],
+      ["FairFace", ff ? (ff.gender[0] >= ff.gender[1] ? "MALE" : "FEMALE") : "", sub(ff ? pct(Math.max(...ff.gender)) : "", SRC.fairface)],
+      ["face2bmi", bm ? (bm.sex > 0.5 ? "MALE" : "FEMALE") : "", sub(bm ? pct(bm.sex > 0.5 ? bm.sex : 1 - bm.sex) : "", SRC.bmi)]
+    ],
+    "c-race": [
+      ["GEAR", gr ? up(gr.race) : "", sub(gr ? pct(gr.score) : "", SRC.gear)],
+      ["FairFace", fr ? up(fr[0]) : "", sub(fr ? pct(fr[1]) : "", SRC.fairface)]
+    ],
+    "c-expr": [
+      ["face-api", fe ? up(fe[0]) : "", sub(fe ? pct(fe[1]) : "", SRC.faceapiExpr)],
+      ["oarriaga", oe ? up(oe.emotion) : "", sub(oe ? pct(oe.score) : "", SRC.oarriaga)]
+    ],
+    "c-bmi": [["face2bmi", bm ? bmiCat(bm.bmi) : "", sub(bm ? bm.bmi.toFixed(2) : "", SRC.bmi)]]
+  };
+  const order = [];
+  for (const id of CELLS) for (const [m, s, sb] of data[id]) { const el = rowEl(m, s, sb); $(id).append(el); order.push(el); }
+  for (const el of order) { await typeIn(el); await wait(40); }   // cell by cell, row by row
+}
+
+/* ---------- start ---------- */
+(async () => {
+  camOK = await startCamera();
+  try {
+    await LabelsEngine.load({ backend: "webgl", log: (s) => { if (s !== "ready") say("Loading " + s); } });
+    say("Preparing models");   // one silent pass on a stored example so the first subject reads quickly
+    const img = new Image(); img.src = "sample.jpg"; await img.decode();
+    const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; c.getContext("2d").drawImage(img, 0, 0);
+    await LabelsEngine.analyze(c);
+    ready = true;
+    if (camOK) { go.disabled = false; say("Look at the camera"); }
+  } catch (e) { console.error(e); say("Models could not load: " + e.message); }
+})();
+</script>
+</body>
+</html>
